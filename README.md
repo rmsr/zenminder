@@ -1,4 +1,6 @@
-zenminder
-=========
+Zen Minder
+==========
 
-Zen Minder Meditation Assistant (Android app)
+Meditation assistant Android app.
+
+GPLv3 license.

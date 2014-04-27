@@ -1,0 +1,9 @@
+<resources>
+
+    <dimen name="activity_horizontal_margin">16dp</dimen>
+    <dimen name="activity_vertical_margin">16dp</dimen>
+    <dimen name="timer_counter_textsize">50sp</dimen>
+    <dimen name="timer_button_textsize">20sp</dimen>
+    <dimen name="timer_button_width">150sp</dimen>
+
+</resources>

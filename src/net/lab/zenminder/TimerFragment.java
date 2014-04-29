@@ -264,7 +264,7 @@ public class TimerFragment extends Fragment implements OnClickListener
                 public void onCompletion(MediaPlayer mp) { mp.release(); }});
         try {
             player.setDataSource(getActivity(),
-                    Uri.parse("android.resource://net.lab.zenminder/" + R.raw.gong));
+                    Uri.parse("android.resource://net.lab.zenminder/" + R.raw.warm_gong));
             player.prepare();
             player.start();
         } catch (IOException e) {

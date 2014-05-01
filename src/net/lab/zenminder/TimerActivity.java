@@ -44,5 +44,4 @@ public class TimerActivity extends ActionBarActivity
                 return super.onOptionsItemSelected(item);
         }
     }
-
 }

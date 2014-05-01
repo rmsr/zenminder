@@ -14,13 +14,4 @@
         android:textSize="@dimen/timer_counter_textsize"
         />
 
-    <Button
-        android:id="@+id/timer_button_start"
-        android:layout_below="@id/timer_counter"
-        android:layout_width="@dimen/timer_button_width"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:textSize="@dimen/timer_button_textsize"
-        />
-
 </RelativeLayout>

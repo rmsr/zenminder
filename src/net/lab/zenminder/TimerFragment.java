@@ -1,9 +1,9 @@
 package net.lab.zenminder;
 
+import android.app.Dialog;
 import android.content.Context;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.media.MediaPlayer.OnCompletionListener;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -15,15 +15,16 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 import java.io.IOException;
 import java.util.HashMap;
 
-public class TimerFragment extends Fragment implements OnClickListener
+public class TimerFragment extends Fragment implements View.OnClickListener, View.OnLongClickListener
 {
+    static int DEFAULT_TIME = 20 * 60 * 1000;
+
     private static final String TAG = "ZenMinder.TimerFragment";
 
     // Finite state machine transition table infrastructure
@@ -70,31 +71,46 @@ public class TimerFragment extends Fragment implements OnClickListener
 
     // States and events for the FSM
     private enum State { READY, RUNNING, STOPPED, PAUSED, FINISHED };
-    private enum Event { BUTTON_START, TICK, PAUSE, RESUME, FINISH };
+    private enum Event { CLICK_COUNTER, LONGCLICK_COUNTER, TICK, PAUSE, RESUME, FINISH };
 
     // All valid transitions appear here. Other transitions will throw an exception.
     private void buildTransitionTable() {
         // From READY state
-        addTransition( State.READY, Event.BUTTON_START, State.RUNNING,
+        addTransition( State.READY, Event.CLICK_COUNTER, State.RUNNING,
                 new Action() { void act() {
-                        mStartButton.setText(getString(R.string.timer_pause));
+                        mCounterView.setLongClickable(false);
                         startTimer();
+                    }});
+
+        addTransition( State.READY, Event.LONGCLICK_COUNTER, State.READY,
+                new Action() { void act() {
+                        SessionLengthDialogBuilder dialog = new SessionLengthDialogBuilder(getActivity(), DEFAULT_TIME / 60 / 1000) {
+                            public void onOK(int value) {
+                                // TODO store this in prefs
+                                if (value > 0) {
+                                    DEFAULT_TIME = value * 60 * 1000;
+                                } else {
+                                    // testing mode
+                                    DEFAULT_TIME = 5000;
+                                }
+                                resetTimeRemaining();
+                                updateCounterView();
+                            }};
+                        dialog.show();
                     }});
 
         addTransition( State.READY, Event.PAUSE );
 
         addTransition( State.READY, Event.RESUME, State.READY,
                 new Action() { void act() {
-                        mStartButton.setText(getString(R.string.timer_start));
                         updateCounterView();
                     }});
 
         // From RUNNING state
-        addTransition( State.RUNNING, Event.BUTTON_START, State.STOPPED,
+        addTransition( State.RUNNING, Event.CLICK_COUNTER, State.STOPPED,
                 new Action() { void act() {
                         stopTimer();
                         mCounterView.startAnimation(mBlinkAnimation);
-                        mStartButton.setText(getString(R.string.timer_resume));
                     }});
 
         addTransition( State.RUNNING, Event.TICK, State.RUNNING,
@@ -113,16 +129,14 @@ public class TimerFragment extends Fragment implements OnClickListener
         addTransition( State.RUNNING, Event.FINISH, State.FINISHED,
                 new Action() { void act() {
                         stopTimer();
-                        mStartButton.setText(getString(R.string.timer_reset));
                         mCounterView.setText(getString(R.string.timer_done));
                         recordSession();
-                        playSound();
+                        playDoneSound();
                     }});
 
         // From STOPPED state
-        addTransition( State.STOPPED, Event.BUTTON_START, State.RUNNING,
+        addTransition( State.STOPPED, Event.CLICK_COUNTER, State.RUNNING,
                 new Action() { void act() {
-                        mStartButton.setText(getString(R.string.timer_pause));
                         mCounterView.clearAnimation();
                         startTimer();
                     }});
@@ -131,7 +145,6 @@ public class TimerFragment extends Fragment implements OnClickListener
 
         addTransition( State.STOPPED, Event.RESUME, State.STOPPED,
                 new Action() { void act() {
-                        mStartButton.setText(getString(R.string.timer_resume));
                         updateCounterView();
                         mCounterView.startAnimation(mBlinkAnimation);
                     }});
@@ -139,16 +152,15 @@ public class TimerFragment extends Fragment implements OnClickListener
         // From PAUSED state
         addTransition( State.PAUSED, Event.RESUME, State.RUNNING,
                 new Action() { void act() {
-                        mStartButton.setText(getString(R.string.timer_pause));
                         updateCounterView();
                         startTimer();
                     }});
 
         // From FINISHED state
-        addTransition( State.FINISHED, Event.BUTTON_START, State.READY,
+        addTransition( State.FINISHED, Event.CLICK_COUNTER, State.READY,
                 new Action() { void act() {
+                        mCounterView.setLongClickable(true);
                         resetTimeRemaining();
-                        mStartButton.setText(getString(R.string.timer_start));
                         updateCounterView();
                     }});
 
@@ -156,16 +168,13 @@ public class TimerFragment extends Fragment implements OnClickListener
 
         addTransition( State.FINISHED, Event.RESUME, State.FINISHED,
                 new Action() { void act() {
-                        mStartButton.setText(getString(R.string.timer_start));
                         mCounterView.setText(getString(R.string.timer_done));
                     }});
     }
 
-    private static final int DEFAULT_TIME = 20 * 60 * 1000;
     private static final int TICK_INTERVAL = 250;
 
     private TextView mCounterView;
-    private Button mStartButton;
     private Animation mBlinkAnimation;
 
     private CountDownTimer mCountdown;
@@ -190,9 +199,8 @@ public class TimerFragment extends Fragment implements OnClickListener
         View view = inflater.inflate(R.layout.timer_fragment, container, false);
 
         mCounterView = (TextView) view.findViewById(R.id.timer_counter);
-
-        mStartButton = (Button) view.findViewById(R.id.timer_button_start);
-        mStartButton.setOnClickListener(this);
+        mCounterView.setOnClickListener(this);
+        mCounterView.setOnLongClickListener(this);
 
         return view;
     }
@@ -213,17 +221,29 @@ public class TimerFragment extends Fragment implements OnClickListener
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
-            case R.id.timer_button_start:
-                handleEvent(Event.BUTTON_START);
+            case R.id.timer_counter:
+                handleEvent(Event.CLICK_COUNTER);
                 break;
             default:
-                Log.d(TAG, "unknown click view id " + view.getId());
-                break;
+                throw new RuntimeException("unknown click view id " + view.getId());
         }
     }
 
+    @Override
+    public boolean onLongClick(View view) {
+        switch (view.getId()) {
+            case R.id.timer_counter:
+                handleEvent(Event.LONGCLICK_COUNTER);
+                break;
+            default:
+                throw new RuntimeException("unknown long click view id " + view.getId());
+        }
+        return true;
+    }
+
     void resetTimeRemaining() {
-        mTimeRemaining = DEFAULT_TIME; // TODO retrieve this from settings
+        // TODO get this from prefs
+        mTimeRemaining = DEFAULT_TIME;
         mTimeTotal = mTimeRemaining;
     }
 
@@ -247,29 +267,38 @@ public class TimerFragment extends Fragment implements OnClickListener
     }
 
     void recordSession() {
-        // TODO store the results somewhere
+        // TODO log the session in a database
     }
 
     private void updateCounterView() {
         long remaining = ( mTimeRemaining + 999 ) / 1000; // round seconds up
         long minutes = remaining / 60;
-        long seconds = remaining % 60;
-        mCounterView.setText(String.format("%02d:%02d", minutes, seconds));
+        String string;
+        if (minutes > 0) {
+            string = String.format("%d%s", minutes, getString(R.string.minutes_suffix));
+        } else {
+            long seconds = remaining % 60;
+            string = String.format("%d%s", seconds, getString(R.string.seconds_suffix));
+        }
+        mCounterView.setText(string);
     }
 
-    void playSound() {
+    void playDoneSound() {
+        // TODO get this from prefs
+        playURI("android.resource://net.lab.zenminder/" + R.raw.warm_gong);
+    }
+
+    void playURI(String uri) {
         MediaPlayer player = new MediaPlayer();
         player.setAudioStreamType(AudioManager.STREAM_NOTIFICATION);
-        player.setOnCompletionListener(new OnCompletionListener() {
+        player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                 public void onCompletion(MediaPlayer mp) { mp.release(); }});
         try {
-            player.setDataSource(getActivity(),
-                    Uri.parse("android.resource://net.lab.zenminder/" + R.raw.warm_gong));
+            player.setDataSource(getActivity(), Uri.parse(uri));
             player.prepare();
             player.start();
         } catch (IOException e) {
             throw new RuntimeException(e); // declaring exceptions is stupid
         }
     }
-
 }

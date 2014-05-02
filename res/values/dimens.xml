@@ -3,7 +3,7 @@
     <dimen name="activity_horizontal_margin">16dp</dimen>
     <dimen name="activity_vertical_margin">16dp</dimen>
     <dimen name="timer_counter_textsize">80sp</dimen>
-    <dimen name="timer_counter_padding">48dp</dimen>
+    <dimen name="timer_counter_padding">24dp</dimen>
     <dimen name="timer_button_textsize">30sp</dimen>
     <dimen name="timer_button_width">250sp</dimen>
 

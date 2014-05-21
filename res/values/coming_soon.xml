@@ -1,0 +1,8 @@
+<resources>
+    <string name="coming_coon">
+        <![CDATA[
+        <div align="center"><b>Coming soon!</b></div>
+        <div align="center"><a href="https://github.com/rmsr/zenminder/wiki/Contribute">Perhaps you can help?</a></div>
+        ]]>
+    </string>
+</resources>
